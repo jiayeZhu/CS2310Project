@@ -1,5 +1,6 @@
 @echo off
 title GUI
 
-javac -sourcepath ../../Components/GUI -cp ../../Components/* ../../Components/GUI/*.java
-start "GUI" /D"../../Components/GUI" java -cp .;../* CreateGUI
+cd ..\..\Components\GUI
+javac -d . -classpath ..\..\Libraries\*;..\* *.java
+start "GUI" java -cp .;..\*;..\..\Libraries\* CreateGUI

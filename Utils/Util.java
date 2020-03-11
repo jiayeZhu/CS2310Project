@@ -1,3 +1,8 @@
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.DeliverCallback;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,6 +12,7 @@ import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeoutException;
 
 class KeyValueList {
 	// interal map for the message <property name, property value>, key and
@@ -112,24 +118,34 @@ class MsgEncoder {
 	// used for writing Strings
 	private PrintStream writer;
 
+	private Channel channel;
+	private String QUEUE_NAME;
 	/*
 	 * Constructor
 	 */
 	public MsgEncoder(OutputStream out) throws IOException {
 		writer = new PrintStream(out);
 	}
+	public MsgEncoder(Channel channel, String QUEUE_NAME) throws IOException {
+		this.channel = channel;
+		this.QUEUE_NAME = QUEUE_NAME;
+		this.channel.queueDeclare(QUEUE_NAME, false, false, false, null);
+	}
 
 	/*
 	 * encode the KeyValueList that represents a message into a String and send
 	 */
 	public void sendMsg(KeyValueList kvList) throws IOException {
-		if (kvList == null || kvList.size() < 1) {
-			return;
-		}
-//		System.out.println(kvList.encodedString());
-		writer.print(kvList.encodedString() + "\n");
-		writer.flush();
+		if (kvList == null || kvList.size() < 1) { return; }
+		if (this.writer == null) { sendMsgToMQ(kvList); return;}
+		this.writer.print(kvList.encodedString() + "\n");
+		this.writer.flush();
 	}
+	public void sendMsgToMQ(KeyValueList kv) throws IOException {
+		if (kv == null || kv.size() < 1) { return; }
+		this.channel.basicPublish("", QUEUE_NAME, null, kv.encodedString().getBytes());
+	}
+	public void close() throws IOException, TimeoutException { this.channel.close(); }
 }
 
 /**************************************
@@ -142,13 +158,19 @@ class MsgDecoder {
 	// used for reading Strings
 	private BufferedReader reader;
 
+	private Channel channel;
+	private String QUEUE_NAME;
 	/*
 	 * Constructor
 	 */
 	public MsgDecoder(InputStream in) throws IOException {
 		reader = new BufferedReader(new InputStreamReader(in));
 	}
-
+	public MsgDecoder(Channel channel, String QUEUE_NAME) throws IOException {
+		this.channel = channel;
+		this.QUEUE_NAME = QUEUE_NAME;
+		this.channel.queueDeclare(this.QUEUE_NAME, false, false, false, null);
+	}
 	/*
 	 * read and decode the message into KeyValueList
 	 */
@@ -172,4 +194,21 @@ class MsgDecoder {
 		}
 		return kvList;
 	}
+
+	public void setMQConsumer(DeliverCallback cb) throws IOException {
+		this.channel.basicConsume(this.QUEUE_NAME, true, cb, consumerTag -> { });
+	}
+	public void close() throws IOException, TimeoutException { this.channel.close(); }
+}
+
+class MQConnection {
+	private ConnectionFactory factory = new ConnectionFactory();
+	private Connection connection;
+	public MQConnection(String MQ_HOST) throws IOException, TimeoutException {
+		this.factory.setHost(MQ_HOST);
+		this.connection = this.factory.newConnection();
+	}
+	public Connection getConnection() { return connection; }
+	public ConnectionFactory getFactory() { return factory; }
+	public void close() throws IOException { this.connection.close(); }
 }

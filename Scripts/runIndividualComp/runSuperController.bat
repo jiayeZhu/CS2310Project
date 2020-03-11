@@ -1,5 +1,7 @@
 @echo off
 title SuperController
 
-javac -sourcepath ../../Component/SuperController -cp ../../Components/* ../../Components/SuperController/*.java
-start "SuperController" /D"../../Components/SuperController" java -cp .;../* CreateSuperController
+cd ..\..\Components\SuperController
+javac -d . -sourcepath ..\..\Utils\* -cp ..\..\Libraries\* *.java
+start "SuperController"  java -cp .;..\*;..\..\Libraries\* CreateSuperController
+pause

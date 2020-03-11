@@ -18,58 +18,6 @@ public class Initializer {
 
     static int port = 53217;
 
-    // public static void example() {
-    // try {
-    // String path = "xml/CreateBloodPressure.XML";
-    //
-    // Msg msg = new Msg();
-    // Head head = new Head();
-    // Body body = new Body();
-    // Item item1 = new Item();
-    // item1.setKey("InputMessage1");
-    // item1.setValue("43");
-    // Item item2 = new Item();
-    // item2.setKey("OutputMessage1");
-    // item2.setValue("44");
-    // List<Item> items = new ArrayList<Item>();
-    // items.add(item1);
-    // items.add(item2);
-    // body.setItems(items);
-    // head.setMsgId("20");
-    // head.setDescription("REG");
-    // msg.setBody(body);
-    // msg.setHead(head);
-    //
-    // JAXBContext context = JAXBContext.newInstance(Msg.class);
-    // Marshaller marshaller = context.createMarshaller();
-    // marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-    // marshaller.marshal(msg, System.out);
-    //
-    // Unmarshaller unmarshaller = context.createUnmarshaller();
-    //
-    // Msg msg2 = (Msg) unmarshaller.unmarshal(new File(path));
-    //
-    // marshaller.marshal(msg2, System.out);
-    //
-    // } catch (JAXBException e) {
-    // // TODO Auto-generated catch block
-    // e.printStackTrace();
-    // }
-    // }
-
-//    static KeyValueList extractToKV(Msg msg) {
-//        KeyValueList kvList = new KeyValueList();
-//        //Head head = msg.getHead();
-//        //Body body = msg.getBody();
-//        //kvList.addPair("MsgID", head.getMsgId());
-//        //kvList.addPair("Description", head.getDescription());
-//        List<Item> items = body.getItems();
-//        for (Item i : items) {
-//            kvList.addPair(i.getKey(), i.getValue());
-//        }
-//        return kvList;
-//    }
-
     static void processFile(File file) {
         KeyValueList kvList = new KeyValueList();
         try {
@@ -101,7 +49,7 @@ public class Initializer {
 
     public static void main(String[] args) {
 
-        Path path = FileSystems.getDefault().getPath("../xml/InitXML");
+        Path path = FileSystems.getDefault().getPath("xml/InitXML");
 
         while (true) {
 

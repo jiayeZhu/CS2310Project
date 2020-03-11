@@ -127,7 +127,6 @@ public class CreateGesture {
                 reading.date = System.currentTimeMillis();
                 alert.putPair("NeedHelp", reading.needHelp+"");
                 alert.putPair("Date",reading.date+"");
-                alert.removePair("Receiver");
                 alert.putPair("Receiver","SuperController");
                 encoder.sendMsg(alert);
                 System.out.println(alert.toString());
@@ -260,9 +259,4 @@ public class CreateGesture {
         }
     }
 
-}
-
-class GestureReading {
-    boolean needHelp;
-    long date;
 }

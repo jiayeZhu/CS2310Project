@@ -281,7 +281,7 @@ public class CreateSuperController {
 						try {
 							long date = Long.parseLong(kvList.getValue("Date"));
 							if(date>TTLforVisit){
-								TTLforVisit = date + 1000*5;	//second Alert within 2 minutes will become a EmergencyCase: UserNeedVisit， 5seconds for demo
+								TTLforVisit = date + 1000*5;	//second Alert within 2 minutes will become a EmergencyCase: UserNeedVisit, 5seconds for demo
 								System.out.println("========= Send out Emergency message =========");
 								emergency.putPair("Receiver","Uploader");
 								emergency.putPair("EmergencyCase", "UserNeedHelp");

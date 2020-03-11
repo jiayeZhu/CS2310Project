@@ -1,3 +1,6 @@
+import java.io.IOException;
+import java.util.stream.Collectors;
+
 public class SISHandlers {
 	// broadcast (up/down) and receiver
 	// all "RECEIVER"s in the broadcast hierarchy can receive (scope startsWith)
@@ -622,6 +625,67 @@ public class SISHandlers {
 		// no sender no distribution
 	}
 	
+	static void RegisterHandler(String scope, ComponentType type, String name, KeyValueList kvList, MQConnection mq) {
+		if (type == null || name == null || name.equals("")) return;
+		if (type == ComponentType.Controller) {
+			String in = kvList.getValue("InputPath");
+			String out = kvList.getValue("OutputPath");
+//			new NewTranslator(name, in, out);
+		}
+		ComponentInfo info = new ComponentInfo(scope, type, name);
+		SISServer.mapping.put(info, new ComponentConnection(mq));
+		System.out.println(info);
+	}
 
+	static void ConnectHandler(String scope, ComponentType type, String name, KeyValueList kvList) throws IOException {
+		ComponentInfo keyInfo = new ComponentInfo(scope, type, name);
+		ComponentConnection connection = SISServer.mapping.get(keyInfo);
+		if (connection != null){
+			connection.encoder = new MsgEncoder(connection.getMq().getConnection().createChannel(), scope+"/"+name);
+			KeyValueList confirm = new KeyValueList();
+			confirm.putPair("Scope", scope);//SISServer.getTopScope());
+			confirm.putPair("MessageType", "Confirm");
+			confirm.putPair("Sender", "SISServer");
+			confirm.putPair("Receiver", name);
+			connection.encoder.sendMsg(confirm);
 
+			String in = kvList.getValue("IncomingMessages");
+			String out = kvList.getValue("OutgoingMessages");
+			ComponentInfo target = SISServer.mapping.keySet().stream().filter(x -> x.equals(keyInfo)).findFirst().orElse(null);
+			if(target != null){
+				target.setIncomingMessages(in);
+				target.setOutgoingMessages(out);
+			}
+
+			if (type != ComponentType.Monitor) {
+				SISServer.reRoute(scope, kvList);
+			}
+		} else {
+			System.out.println("=========================================");
+			System.out.println("Not registered: "+scope+"|"+type+"|"+name);
+			System.out.println("=========================================");
+		}
+	}
+
+	static void ListHandler(String scope, ComponentType type, String name, KeyValueList kvList) throws IOException {
+		ComponentInfo keyInfo = new ComponentInfo(scope, type, name);
+		ComponentConnection connection = SISServer.mapping.get(keyInfo);
+		KeyValueList list = new KeyValueList();
+		list.putPair("Scope", scope);
+		list.putPair("MessageType", "Confirm");
+		list.putPair("Sender", "SISServer");
+		// list.putPair("Receiver", name);
+		list.putPair("MessageLists",
+				SISServer.mapping.keySet().stream().map(x -> {
+					return "\n\t\t\t\t" + x.name + "\n\t\t\t\t\t"
+							+ x.incomingMessages + "\n\t\t\t\t\t"
+							+ x.outgoingMessages;
+				}).collect(Collectors.joining("\n")));
+		connection.encoder.sendMsg(list);
+		/*
+		 * Only "RECEIVER" in specified scope can receive
+		 * (scope equals)
+		 */
+		SISServer.reRoute(scope, list);
+	}
 }

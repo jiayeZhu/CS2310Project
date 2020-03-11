@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeoutException;
 
 /**
  * SISServer is used for re-routing messages from some components
@@ -11,7 +12,8 @@ import java.util.concurrent.Executors;
  * that need those messages (according to their definition)
  */
 public class SISServer {
-
+	private final static String SIS_QUEUE_NAME = "SISMQ";
+	private final static String MQ_HOST = "192.168.30.133";
 	// internal routing table for each component
 	// key is the name of a component, see ComponentInfo for details
 
@@ -23,7 +25,23 @@ public class SISServer {
 		return "SIS";
 		// return scope.current;
 	}
-
+	public static void reRoute(String scope, KeyValueList kvList){
+		SISServer.mapping.entrySet().stream()
+			.filter(x -> (x.getKey().scope.equals(scope)
+					&& (x.getKey().componentType == ComponentType.Monitor || x.getKey().componentType == ComponentType.Debugger)
+					&& x.getValue().encoder != null))
+			.forEach(x -> {
+				try {
+					// re-route this message to each
+					// qualified
+					// component
+					x.getValue().encoder.sendMsg(kvList);
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					System.out.println("ERROR: Fail to send " + kvList + ", abort subtask");
+				}
+			});
+	}
 	public static void main(String[] args) {
 
 		// thread pool for handling connections to components
@@ -36,12 +54,21 @@ public class SISServer {
 			serverSocket = new ServerSocket(port);
 			System.out.println("SISServer starts, waiting for new components");
 			service.execute(new SISPullTask());
+			// Setup MQ consumer
+			MQConnection mq = new MQConnection(MQ_HOST);
+			MsgDecoder decoder = new MsgDecoder(mq.getConnection().createChannel(),SIS_QUEUE_NAME);
+			SISTaskManager taskManager = new SISTaskManager(mq);
+			decoder.setMQConsumer((consumerTag, delivery)->{
+				String message = new String(delivery.getBody(), "UTF-8");
+				System.out.println(" [x] Received '" + message + "'");
+				if (message.length() > 2){ taskManager.handleMessage(message); }
+			});
 			while (true) {
 				// initialize a secondary task for each
 				// new connection in the thread pool
 				service.execute(new SISTask(serverSocket.accept()));
 			}
-		} catch (IOException e) {
+		} catch (IOException | TimeoutException e) {
 			e.printStackTrace();
 		}
 	}
@@ -83,7 +110,31 @@ class ComponentInfo {
 	public void setOutgoingMessages(String outgoingMessages) {
 		this.outgoingMessages = outgoingMessages;
 	}
-
+	public static ComponentType getComponentType(String role) {
+		ComponentType type = null;
+		if (role == null) {
+			return null;
+		}
+		switch (role) {
+			case "Basic":
+				type = ComponentType.Basic;
+				break;
+			case "Monitor":
+				type = ComponentType.Monitor;
+				break;
+			case "Advertiser":
+				type = ComponentType.Advertiser;
+				break;
+			case "Controller":
+				type = ComponentType.Controller;
+				break;
+			case "Debugger":
+				type = ComponentType.Debugger;
+			default:
+				break;
+		}
+		return type;
+	}
 	@Override
 	public boolean equals(Object obj) {
 		// TODO Auto-generated method stub
@@ -122,6 +173,7 @@ enum ComponentType {
 	Basic, Controller, Monitor, Advertiser, Debugger
 }
 
+
 /**
  * 
  * ComponentConnection represents connections
@@ -137,8 +189,17 @@ class ComponentConnection {
 	// message reader for a component
 	MsgDecoder decoder;
 
+	private MQConnection mq;
+
+	public MQConnection getMq() {
+		return mq;
+	}
+
 	public ComponentConnection() {
 		// TODO Auto-generated constructor stub
+	}
+	public ComponentConnection(MQConnection mq){
+		this.mq = mq;
 	}
 
 	public ComponentConnection(MsgEncoder e, MsgDecoder d) {

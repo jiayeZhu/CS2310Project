@@ -1,5 +1,7 @@
 @echo off
 title Gesture
 
-javac -sourcepath ../../Component/Gesture -cp ../../Components/* ../../Components/Gesture/*.java
-start "Gesture" /D"../../Components/Gesture" java -cp .;../* CreateGesture
+cd ..\..\Components\Gesture
+javac -d . -classpath ..\..\Libraries\* ..\..\Utils\*.java
+javac -d . -classpath .;..\..\Libraries\* *.java
+start "Gesture" java -classpath .;..\..\Libraries\* NewCreateGesture
